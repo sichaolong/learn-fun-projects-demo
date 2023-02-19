@@ -1,10 +1,7 @@
-# OpenAI ChatGPT Clone
+# OpenAI ChatGPT - demo
 
 This is a demonestration of using Open AI API for text completion and image generation. The app is built with Node.js and Express that uses :
 - text-davinci-003 model
-- [OpenAI's Dall-E models](https://beta.openai.com/docs/guides/images).
-
-<img src="public/img/screen.png" width="500">
 
 ## Usage
 
@@ -21,4 +18,10 @@ Run server
 ```bash
 npm start
 ```
-DEMO: [https://open-ai-chatgpt-clone.onr-/ender.com/index.html](https://open-ai-chatgpt-clone.onrender.com/index.html)
+
+
+Curl website and test ...
+
+
+
+![image-20230219160408598](C:\Users\sicha\AppData\Roaming\Typora\typora-user-images\image-20230219160408598.png)
