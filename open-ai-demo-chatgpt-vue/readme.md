@@ -24,4 +24,4 @@ Curl website and test ...
 
 
 
-![image-20230219160408598](C:\Users\sicha\AppData\Roaming\Typora\typora-user-images\image-20230219160408598.png)
+![image-20230219160408598](D:\myproject\my_github_projects\open-ai-demo\open-ai-demo-chatgpt-vue\assets\image-20230219160408598.png)
