@@ -19,7 +19,7 @@ import qianfan
 # 继承自 langchain.llms.base.LLM
 class Wenxin_LLM(LLM):
     # 默认选用 ERNIE-Bot-turbo 模型，即目前一般所说的百度文心大模型
-    model: str = "ERNIE-Bot-turbo"
+    model: str = "ERNIE-4.0-8K-Latest"
     # 温度系数
     temperature: float = 0.1
     # API_Key

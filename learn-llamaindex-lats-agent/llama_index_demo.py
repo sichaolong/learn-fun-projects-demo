@@ -1,3 +1,6 @@
+from llama_index.core.agent import AgentRunner
+
+import qianfan
 from llama_index.agent.lats import LATSAgentWorker
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -14,9 +17,11 @@ from llama_index.core import (
     load_index_from_storage,
 )
 from llama_index.core.storage import StorageContext
+from transformers import AutoTokenizer, AutoModel
 
 import os
 import nest_asyncio
+
 
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
@@ -25,56 +30,63 @@ nest_asyncio.apply()
 
 
 def init_query_engine_tools():
-    if not os.path.exists("./storage/lyft"):
+    print("init_query_engine_tools ...")
+    if not os.path.exists("./storage/高中英语试卷-useful-data"):
         # load data
-        lyft_docs = SimpleDirectoryReader(
-            input_files=["./data/10k/lyft_2021.pdf"]
+        lats_docs = SimpleDirectoryReader(
+            input_files=["./data/LATS论文.pdf"]
         ).load_data()
-        uber_docs = SimpleDirectoryReader(
-            input_files=["./data/10k/uber_2021.pdf"]
+        paper_docs = SimpleDirectoryReader(
+            input_files=["./data/高中英语试卷-useful-data.pdf"]
         ).load_data()
+
+        print(lats_docs)
+        print(paper_docs)
 
         # build index
-        lyft_index = VectorStoreIndex.from_documents(lyft_docs)
-        uber_index = VectorStoreIndex.from_documents(uber_docs)
+        print("build index")
+        lats_index = VectorStoreIndex.from_documents(lats_docs)
+        paper_index = VectorStoreIndex.from_documents(paper_docs)
 
         # persist index
-        lyft_index.storage_context.persist(persist_dir="./storage/lyft")
-        uber_index.storage_context.persist(persist_dir="./storage/uber")
+        print("persist index")
+        lats_index.storage_context.persist(persist_dir="./storage/lats论文")
+        paper_index.storage_context.persist(persist_dir="./storage/高中英语试卷-useful-data")
     else:
         storage_context = StorageContext.from_defaults(
-            persist_dir="./storage/lyft"
+            persist_dir="./storage/lats论文"
         )
-        lyft_index = load_index_from_storage(storage_context)
+        lats_index = load_index_from_storage(storage_context)
 
         storage_context = StorageContext.from_defaults(
-            persist_dir="./storage/uber"
+            persist_dir="./storage/高中英语试卷-useful-data"
         )
-        uber_index = load_index_from_storage(storage_context)
+        paper_index = load_index_from_storage(storage_context)
 
-    lyft_engine = lyft_index.as_query_engine(similarity_top_k=3)
-    uber_engine = uber_index.as_query_engine(similarity_top_k=3)
+    lats_engine = lats_index.as_query_engine(similarity_top_k=3)
+    paper_engine = paper_index.as_query_engine(similarity_top_k=3)
 
+    print("prepare return query_engine_tools")
     query_engine_tools = [
         QueryEngineTool(
-            query_engine=lyft_engine,
+            query_engine=lats_engine,
             metadata=ToolMetadata(
-                name="lyft_10k",
+                name="lats论文QueryEngineTool",
                 description=(
-                    "Provides information about Lyft financials for year 2021. "
+                    "Provides information about LATS(Language Agent Tree Search) paper"
                     "Use a detailed plain text question as input to the tool. "
                     "The input is used to power a semantic search engine."
                 ),
             ),
         ),
         QueryEngineTool(
-            query_engine=uber_engine,
+            query_engine=paper_engine,
             metadata=ToolMetadata(
-                name="uber_10k",
+                name="辅助正确解答试题知识库QueryEngineTool",
                 description=(
-                    "Provides information about Uber financials for year 2021. "
-                    "Use a detailed plain text question as input to the tool. "
-                    "The input is used to power a semantic search engine."
+                    "知识库包含很多试题的信息供参考，试题内容包含题干、答案、解析信息 。 "
+                    "使用详细的纯文本问题作为工具的输入。"
+                    "输入用于为语义搜索引擎提供动力。"
                 ),
             ),
         ),
@@ -101,10 +113,8 @@ if __name__ == '__main__':
     #     api_version="2023-07-01-preview",
     # )
 
-    print("开始初始化模型...")
-
     """
-    3、使用HuggingFaceAPI
+    3、使用HuggingFaceAPI，网络不稳定，需要代理
     """
     # llm = HuggingFaceInferenceAPI(
     #     model_name="bigscience/bloom",
@@ -113,18 +123,36 @@ if __name__ == '__main__':
     #     token=os.getenv("HUGGING_FACE_API_KEY"),  # Optional
     # )
 
-    # 4、使用LangChain LLM
-    llm = LangChainLLM(llm=Wenxin_LLM(api_key=os.getenv("WEN_XIN_API_KEY"),
-                                      secret_key=os.getenv("WEN_XIN_SECRET_KEY"),
-                                      system="你是一个助手！"))
-    response = llm.complete("What is the meaning of life?")
-    print(response)
-
+    """
+    4、使用LangChain LLM 包装 百度文新LLM
+    """
+    print("开始初始化模型...")
+    llm = LangChainLLM(llm=Wenxin_LLM(model="Meta-Llama-3-8B",
+                                      api_key=os.getenv("WEN_XIN_API_KEY"),
+                                      secret_key=os.getenv("WEN_XIN_SECRET_KEY")))
+    # response = llm.complete("什么是LATS（Language Agent Tree Search）？LATS和Agent有什么区别？使用Langchain4j如何构建LATS智能体？")
+    # print("LLM直接回答：" + response.text)
 
     print("开始初始化embedding...")
+
+    """
+    5、OpenAIEmbedding需要代理
+    """
+    # embed_model = OpenAIEmbedding(model="text-embedding-3-small")
+
+
+    """
+    6、使用HuggingFace Embedding
+    """
     # 如果使用报错找不到，使用huggingface模型 https://docs.llamaindex.ai/en/stable/module_guides/models/embeddings/#modules
-    embed_model = OpenAIEmbedding(model="text-embedding-3-small")
-    # embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
+    embed_model = HuggingFaceEmbedding(model_name="./models/BAAI/bge-small-en-v1.5")
+    # Load model directly
+    # tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-small-en-v1.5")
+    # embed_model = AutoModel.from_pretrained("BAAI/bge-small-en-v1.5")
+    # tokenizer.save_pretrained("./BAAI/bge-small-en-v1.5/tokenizer")
+    # embed_model.save_pretrained("./BAAI/bge-small-en-v1.5/embedmodel")
+
+
 
     Settings.llm = llm
     Settings.embed_model = embed_model
@@ -138,12 +166,11 @@ if __name__ == '__main__':
     )
 
     print("开始初始化agent...")
-    agent = agent_worker.as_worker()
-
+    # 官网文档有bug，https://github.com/run-llama/llama_index/issues/13140
+    agent = AgentRunner(agent_worker=agent_worker)
     # task1
     task = agent.create_task(
-        "Given the risk factors of Uber and Lyft described in their 10K files, "
-        "which company is performing better? Please use concrete numbers to inform your decision."
+        "解答试题，输出正确的答案与解析：_ good use you have made of your time to study, there is still room for improvement. A.Whatever B.However C.Though D.Whether"
     )
     # run initial step
     step_output = agent.run_step(task.task_id)
